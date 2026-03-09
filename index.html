@@ -20,6 +20,7 @@
       --green:  #4caf50;
       --red:    #f44336;
       --orange: #ffa500;
+      --party-glow: transparent;
     }
 
     body {
@@ -27,60 +28,74 @@
       color: var(--text);
       font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
       min-height: 100vh;
-      padding: 16px;
+      padding: 14px;
       font-size: 13px;
       line-height: 1.5;
+      transition: background 0.2s;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: var(--party-glow);
+      pointer-events: none;
+      z-index: 0;
+      transition: background 0.08s;
+    }
+    body.party-active {
+      background: radial-gradient(ellipse at center, #0d1117 60%, #050810 100%);
     }
 
-    /* ── Header ────────────────────────────────────────────────────────── */
+    /* ── Header ─────────────────────────────────────────────────────────── */
     header {
       border-bottom: 1px solid var(--border);
-      padding-bottom: 12px;
-      margin-bottom: 16px;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      position: relative;
+      z-index: 1;
     }
-    header h1 {
-      font-size: 1.35rem;
-      color: var(--accent);
-      letter-spacing: 0.03em;
-    }
-    header p {
-      font-size: 0.72rem;
-      color: var(--muted);
-      margin-top: 4px;
-    }
+    header h1 { font-size: 1.3rem; color: var(--accent); letter-spacing: 0.03em; }
+    header p   { font-size: 0.70rem; color: var(--muted); margin-top: 3px; }
 
-    /* ── Card panels ────────────────────────────────────────────────────── */
+    /* ── Card panels ─────────────────────────────────────────────────────── */
     .panel {
       background: var(--bg1);
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 12px 14px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
+      position: relative;
+      z-index: 1;
     }
     .panel-title {
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       color: var(--accent);
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
     }
     .panel-title span {
       color: var(--muted);
       text-transform: none;
       letter-spacing: 0;
-      font-size: 0.68rem;
+      font-size: 0.67rem;
     }
+    .panel-title .right { margin-left: auto; }
 
-    /* ── Controls row ───────────────────────────────────────────────────── */
+    /* ── Controls row ────────────────────────────────────────────────────── */
     .controls {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
       flex-wrap: wrap;
     }
 
     button {
-      padding: 5px 14px;
+      padding: 5px 13px;
       border: 1px solid var(--border);
       border-radius: 4px;
       background: var(--bg2);
@@ -89,12 +104,12 @@
       font-family: inherit;
       font-size: 0.78rem;
       transition: background 0.12s, border-color 0.12s;
+      white-space: nowrap;
     }
-    button:hover:not(:disabled) {
-      background: #1f2937;
-      border-color: var(--accent);
-    }
+    button:hover:not(:disabled) { background: #1f2937; border-color: var(--accent); }
     button:disabled { opacity: 0.38; cursor: not-allowed; }
+    button.active   { border-color: var(--cyan); color: var(--cyan); }
+    button.danger:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
 
     #status-text {
       font-size: 0.78rem;
@@ -103,178 +118,373 @@
       border: 1px solid var(--border);
       border-radius: 4px;
       background: var(--bg0);
-      min-width: 110px;
+      min-width: 120px;
     }
 
-    /* ── Canvases ───────────────────────────────────────────────────────── */
-    canvas {
+    /* ── File info strip ─────────────────────────────────────────────────── */
+    #file-info {
+      margin-top: 7px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      min-height: 1em;
+    }
+    #file-progress {
+      width: 100%;
+      height: 3px;
+      appearance: none;
+      background: var(--bg2);
+      border: none;
+      border-radius: 2px;
+      margin-top: 5px;
+      display: none;
+    }
+    #file-progress::-webkit-progress-bar   { background: var(--bg2); border-radius: 2px; }
+    #file-progress::-webkit-progress-value { background: var(--cyan); border-radius: 2px; }
+
+    /* ── Pipeline editor ─────────────────────────────────────────────────── */
+    #pipeline-toolbar {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+    #pipeline-toolbar .sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+    #pipeline-canvas {
       display: block;
       width: 100%;
-      border-radius: 3px;
+      height: 300px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: default;
+      touch-action: none;
     }
-    #spectrogram-canvas {
+    .hint {
+      font-size: 0.67rem;
+      color: var(--muted);
+      margin-top: 5px;
+    }
+
+    /* ── Block params modal ──────────────────────────────────────────────── */
+    #block-params-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    #block-params-overlay.open { display: flex; }
+    #block-params-modal {
+      background: var(--bg1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      min-width: 320px;
+      max-width: 460px;
+      width: 90vw;
+    }
+    #block-params-modal h3 {
+      color: var(--accent);
+      font-size: 0.9rem;
+      margin-bottom: 14px;
+    }
+    .param-row {
+      display: grid;
+      grid-template-columns: 90px 1fr 70px 40px;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .param-row label { font-size: 0.78rem; color: var(--muted); }
+    .param-row input[type=range] { width: 100%; accent-color: var(--accent); }
+    .param-row input[type=number] {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 3px 6px;
+      width: 100%;
+    }
+    .param-unit { font-size: 0.72rem; color: var(--muted); }
+    #block-params-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+
+    /* ── Visualizer ──────────────────────────────────────────────────────── */
+    .viz-controls {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    #visualizer-canvas {
+      display: block;
+      width: 100%;
       height: 280px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: #000;
+    }
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      user-select: none;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg2);
+    }
+    .toggle-label:has(input:checked) {
+      border-color: var(--orange);
+      color: var(--orange);
+    }
+    .toggle-label input { display: none; }
+    /* Toggle switch track */
+    .toggle-track {
+      width: 30px; height: 16px;
+      background: var(--bg0);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      position: relative;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      left: 2px; top: 2px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: left 0.15s, background 0.15s;
+    }
+    .toggle-label:has(input:checked) .toggle-track {
+      background: var(--orange);
+      border-color: var(--orange);
+    }
+    .toggle-label:has(input:checked) .toggle-track::after {
+      left: 16px;
+      background: #fff;
+    }
+
+    /* ── Canvases (spectrogram / FIR) ────────────────────────────────────── */
+    canvas { display: block; width: 100%; border-radius: 3px; }
+    #spectrogram-canvas {
+      height: 240px;
       background: #000;
       image-rendering: pixelated;
     }
     #fir-canvas {
-      height: 200px;
+      height: 180px;
       background: var(--bg1);
       cursor: crosshair;
       border: 1px solid var(--border);
       border-radius: 3px;
     }
 
-    /* ── Colour legend ──────────────────────────────────────────────────── */
+    /* ── Colour legend ───────────────────────────────────────────────────── */
     .legend {
       display: flex;
-      gap: 14px;
+      gap: 12px;
       flex-wrap: wrap;
-      font-size: 0.68rem;
+      font-size: 0.67rem;
       color: var(--muted);
-      margin-top: 7px;
+      margin-top: 6px;
       align-items: center;
     }
     .legend-swatch {
       display: inline-block;
-      width: 12px;
-      height: 12px;
+      width: 11px; height: 11px;
       border-radius: 2px;
       vertical-align: middle;
-      margin-right: 4px;
+      margin-right: 3px;
     }
 
-    /* ── Metrics grid ───────────────────────────────────────────────────── */
+    /* ── Metrics grid ────────────────────────────────────────────────────── */
     .metrics {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
     }
     .metric-card {
       background: var(--bg0);
       border: 1px solid var(--border);
       border-radius: 4px;
-      padding: 10px 12px;
+      padding: 9px 11px;
     }
-    .metric-label {
-      font-size: 0.66rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-    }
-    .metric-value {
-      font-size: 1.2rem;
-      color: var(--cyan);
-      margin-top: 3px;
-    }
+    .metric-label { font-size: 0.64rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+    .metric-value { font-size: 1.15rem; color: var(--cyan); margin-top: 2px; }
 
-    /* ── FIR hint ───────────────────────────────────────────────────────── */
-    .fir-hint {
-      font-size: 0.68rem;
-      color: var(--muted);
-      margin-top: 6px;
-    }
+    /* ── FIR hint ─────────────────────────────────────────────────────────── */
+    .fir-hint { font-size: 0.67rem; color: var(--muted); margin-top: 5px; }
 
-    /* ── Footer ─────────────────────────────────────────────────────────── */
+    /* ── Footer ───────────────────────────────────────────────────────────── */
     footer {
-      margin-top: 18px;
-      font-size: 0.62rem;
+      margin-top: 16px;
+      font-size: 0.61rem;
       color: #30363d;
       text-align: center;
       line-height: 1.8;
+      position: relative;
+      z-index: 1;
     }
     footer a { color: #30363d; }
+
+    /* ── Recording indicator ─────────────────────────────────────────────── */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+    .recording-dot { display: inline-block; animation: blink 1s infinite; color: var(--red); }
   </style>
 </head>
 <body>
 
-<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<!-- ── Header ─────────────────────────────────────────────────────────────── -->
 <header>
   <h1>AcousticLens — Real-Time DSP Studio</h1>
   <p>
-    STFT Spectrogram &nbsp;·&nbsp; Interactive FIR Filter Designer &nbsp;·&nbsp;
-    A-Weighting (IEC&nbsp;61672-1:2013) &nbsp;·&nbsp; SNR / ENOB (IEEE&nbsp;1241-2010)
-    &nbsp;|&nbsp; Zero external DSP libraries &nbsp;|&nbsp; Vanilla JS + Web Audio API
+    Interactive Signal Chain &nbsp;·&nbsp; Ambient Visualizer &nbsp;·&nbsp;
+    STFT Spectrogram &nbsp;·&nbsp; FIR Filter Designer &nbsp;·&nbsp;
+    File Upload &amp; Output Recording &nbsp;|&nbsp;
+    Vanilla JS + Web Audio API &nbsp;·&nbsp; Zero external DSP libraries
   </p>
 </header>
 
-<!-- ── Controls ────────────────────────────────────────────────────────────── -->
+<!-- ── Audio Source ────────────────────────────────────────────────────────── -->
 <div class="panel">
-  <div class="panel-title">Transport</div>
+  <div class="panel-title">Audio Source</div>
   <div class="controls">
-    <button id="btn-start">▶&nbsp; Start Capture</button>
-    <button id="btn-stop" disabled>■&nbsp; Stop</button>
+    <button id="btn-start-mic">🎤&nbsp; Start Mic</button>
+    <button id="btn-stop-mic" disabled>■&nbsp; Stop Mic</button>
+    <span class="sep" style="display:inline-block;width:1px;height:20px;background:var(--border);"></span>
+    <button id="btn-load-file">📁&nbsp; Load File…</button>
+    <input type="file" id="file-input" accept="audio/*" hidden>
+    <button id="btn-play-file" disabled>▶&nbsp; Play</button>
+    <button id="btn-stop-file" disabled>■&nbsp; Stop File</button>
+    <label class="toggle-label" title="Loop file playback">
+      <input type="checkbox" id="chk-loop"> <span class="toggle-track"></span> Loop
+    </label>
+    <span class="sep" style="display:inline-block;width:1px;height:20px;background:var(--border);"></span>
+    <button id="btn-record-out">⏺&nbsp; Record Output</button>
+    <button id="btn-stop-record" disabled>■&nbsp; Stop Rec</button>
+    <button id="btn-download-rec" disabled>⬇&nbsp; Download</button>
     <span id="status-text">○&nbsp; Idle</span>
   </div>
+  <div id="file-info"></div>
+  <progress id="file-progress" value="0" max="1"></progress>
 </div>
 
-<!-- ── Phase 1: Spectrogram ─────────────────────────────────────────────────── -->
+<!-- ── Signal Chain ─────────────────────────────────────────────────────────── -->
 <div class="panel">
   <div class="panel-title">
-    Phase&nbsp;1 — STFT Real-Time Spectrogram
+    Signal Chain
+    <span>(Drag output port → input port to connect &nbsp;·&nbsp; Right-click to delete &nbsp;·&nbsp; Double-click to edit)</span>
+  </div>
+  <div id="pipeline-toolbar">
+    <span style="font-size:0.68rem;color:var(--muted);margin-right:4px;">Add:</span>
+    <button class="btn-add-block" data-type="GAIN">＋ Gain</button>
+    <button class="btn-add-block" data-type="LOWPASS">＋ LPF</button>
+    <button class="btn-add-block" data-type="HIGHPASS">＋ HPF</button>
+    <button class="btn-add-block" data-type="BANDPASS">＋ BPF</button>
+    <button class="btn-add-block" data-type="NOTCH">＋ Notch</button>
+    <button class="btn-add-block" data-type="PEAKING">＋ Peak EQ</button>
+    <button class="btn-add-block" data-type="LOWSHELF">＋ Low Shelf</button>
+    <button class="btn-add-block" data-type="HIGHSHELF">＋ High Shelf</button>
+    <button class="btn-add-block" data-type="COMPRESSOR">＋ Compressor</button>
+    <button class="btn-add-block" data-type="DELAY">＋ Delay</button>
+    <button class="btn-add-block" data-type="REVERB">＋ Reverb</button>
+    <button class="btn-add-block" data-type="DISTORTION">＋ Distortion</button>
+    <button class="btn-add-block" data-type="FIR">＋ FIR</button>
+    <button class="btn-add-block" data-type="STEREO_PANNER">＋ Panner</button>
+    <div class="sep"></div>
+    <button id="btn-reset-pipeline" class="danger">↺&nbsp; Reset Chain</button>
+  </div>
+  <canvas id="pipeline-canvas" width="1200" height="300"
+          aria-label="Signal chain block diagram editor"></canvas>
+  <p class="hint">
+    Click and drag blocks · Drag the right circle (output port) to a left circle (input port) to connect ·
+    Double-click a block to edit parameters · Right-click a block or wire to delete
+  </p>
+</div>
+
+<!-- ── Block Params Modal ──────────────────────────────────────────────────── -->
+<div id="block-params-overlay" role="dialog" aria-modal="true">
+  <div id="block-params-modal">
+    <h3 id="block-params-title">Block Parameters</h3>
+    <div id="block-params-form"></div>
+    <div id="block-params-actions">
+      <button id="btn-params-close">Close</button>
+      <button id="btn-params-apply">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Ambient Visualizer ──────────────────────────────────────────────────── -->
+<div class="panel">
+  <div class="panel-title">
+    Ambient Visualizer
+    <div class="right">
+      <label class="toggle-label" title="Party mode — reactive background &amp; colours">
+        <input type="checkbox" id="chk-party-mode"> <span class="toggle-track"></span> 🎉 Party Mode
+      </label>
+    </div>
+  </div>
+  <div class="viz-controls">
+    <button class="viz-mode-btn active" data-mode="bars">Bars</button>
+    <button class="viz-mode-btn" data-mode="waveform">Waveform</button>
+    <button class="viz-mode-btn" data-mode="circular">Circular</button>
+    <button class="viz-mode-btn" data-mode="particles">Particles</button>
+  </div>
+  <canvas id="visualizer-canvas" width="1200" height="280"
+          aria-label="Audio visualizer display"></canvas>
+</div>
+
+<!-- ── Phase 1: Spectrogram ───────────────────────────────────────────────── -->
+<div class="panel">
+  <div class="panel-title">
+    STFT Spectrogram
     <span>(Hamming window &nbsp;·&nbsp; Cooley–Tukey DIT FFT &nbsp;·&nbsp; N = 2048)</span>
   </div>
-
-  <canvas id="spectrogram-canvas" width="1024" height="280"
+  <canvas id="spectrogram-canvas" width="1024" height="240"
           aria-label="Real-time spectrogram display"></canvas>
-
   <div class="legend">
-    <span>
-      <span class="legend-swatch" style="background:#000;border:1px solid #333;"></span>
-      −120 dBFS
-    </span>
-    <span>
-      <span class="legend-swatch" style="background:#3c0064;"></span>
-      −90 dBFS
-    </span>
-    <span>
-      <span class="legend-swatch" style="background:#be1e2d;"></span>
-      −60 dBFS
-    </span>
-    <span>
-      <span class="legend-swatch" style="background:#ffa500;"></span>
-      −30 dBFS
-    </span>
-    <span>
-      <span class="legend-swatch" style="background:#ffffd2;border:1px solid #555;"></span>
-      0 dBFS
-    </span>
+    <span><span class="legend-swatch" style="background:#000;border:1px solid #333;"></span>−120 dBFS</span>
+    <span><span class="legend-swatch" style="background:#3c0064;"></span>−90 dBFS</span>
+    <span><span class="legend-swatch" style="background:#be1e2d;"></span>−60 dBFS</span>
+    <span><span class="legend-swatch" style="background:#ffa500;"></span>−30 dBFS</span>
+    <span><span class="legend-swatch" style="background:#ffffd2;border:1px solid #555;"></span>0 dBFS</span>
   </div>
 </div>
 
-<!-- ── Phase 2: FIR Filter Designer ────────────────────────────────────────── -->
+<!-- ── Phase 2: FIR Filter Designer ─────────────────────────────────────────── -->
 <div class="panel">
   <div class="panel-title">
-    Phase&nbsp;2 — Interactive FIR Filter Designer
+    Interactive FIR Filter Designer
     <span>(Draw magnitude response &nbsp;→&nbsp; IFFT &nbsp;→&nbsp; ConvolverNode)</span>
+    <span style="color:var(--muted);">Active only when a <strong style="color:var(--cyan);">FIR</strong> block is present in the chain above</span>
   </div>
-
-  <canvas id="fir-canvas" width="1024" height="200"
+  <canvas id="fir-canvas" width="1024" height="180"
           aria-label="FIR filter designer — draw the desired frequency response"></canvas>
-
-  <div class="controls" style="margin-top:8px;">
+  <div class="controls" style="margin-top:7px;">
     <button id="btn-apply-fir">⚙&nbsp; Apply FIR</button>
     <button id="btn-reset-fir">↺&nbsp; Reset All-Pass</button>
   </div>
   <p class="fir-hint">
-    Draw the desired magnitude response on the canvas above.
-    The filter is applied automatically on mouse release via IFFT (frequency-sampling method,
-    IEEE&nbsp;Std&nbsp;1188-1996) and loaded into the Web Audio
-    <code>ConvolverNode</code>.
+    Draw the desired magnitude response. Applied via IFFT (frequency-sampling method, IEEE&nbsp;1188-1996)
+    into the FIR block in the signal chain.
   </p>
 </div>
 
-<!-- ── Phase 3: Analysis Metrics ────────────────────────────────────────────── -->
+<!-- ── Phase 3: Analysis Metrics ─────────────────────────────────────────────── -->
 <div class="panel">
   <div class="panel-title">
-    Phase&nbsp;3 — Standards-Compliant Analysis
-    <span>
-      A-weighting: IEC&nbsp;61672-1:2013 &nbsp;·&nbsp;
-      SNR / ENOB: IEEE&nbsp;Std&nbsp;1241-2010 &nbsp;·&nbsp;
-      Equal-loudness basis: ISO&nbsp;226:2023
-    </span>
+    Standards-Compliant Analysis
+    <span>A-weighting: IEC&nbsp;61672-1:2013 &nbsp;·&nbsp; SNR/ENOB: IEEE&nbsp;Std&nbsp;1241-2010</span>
   </div>
-
   <div class="metrics">
     <div class="metric-card">
       <div class="metric-label">Peak Frequency</div>
@@ -295,15 +505,17 @@
   </div>
 </div>
 
-<!-- ── Footer ───────────────────────────────────────────────────────────────── -->
+<!-- ── Footer ──────────────────────────────────────────────────────────────── -->
 <footer>
   AcousticLens &nbsp;·&nbsp; No external DSP libraries &nbsp;·&nbsp; Vanilla JS &nbsp;·&nbsp; Web Audio API<br>
   References: IEEE Std 1241-2010 &nbsp;·&nbsp; IEC 61672-1:2013 &nbsp;·&nbsp; ISO 226:2023 &nbsp;·&nbsp;
   Harris 1978 (Proc. IEEE) &nbsp;·&nbsp; Cooley &amp; Tukey 1965 &nbsp;·&nbsp; Shannon 1949
 </footer>
 
-<!-- Load DSP core first, then app logic -->
+<!-- Load modules: DSP core → Pipeline → Visualizer → App -->
 <script src="dsp_core.js"></script>
+<script src="pipeline.js"></script>
+<script src="visualizer.js"></script>
 <script src="app.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', onPageLoad);

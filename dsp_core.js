@@ -545,7 +545,65 @@ function computeENOB(snrDb) {
     return (snrDb - 1.76) / 6.02;
 }
 
-// ─── 7. Utility ───────────────────────────────────────────────────────────────
+// ─── 7. Audio Effect Helpers ─────────────────────────────────────────────────
+
+/**
+ * Generates a synthetic stereo reverb impulse-response AudioBuffer using
+ * filtered, exponentially decaying white noise.
+ *
+ * Algorithm:
+ *   For each channel, each sample i is drawn from a uniform-white-noise
+ *   source and multiplied by an exponential envelope:
+ *
+ *     h[i] = U(−1, +1) · (1 − i/L)^decay
+ *
+ *   where L = ceil(fs · duration).  Higher `decay` values produce a longer,
+ *   smoother tail; lower values produce an abrupt early decay.
+ *
+ * @param {AudioContext} audioCtx  - Web Audio API context (provides sample rate).
+ * @param {number}       duration  - Reverb tail length in seconds (≥ 0.05).
+ * @param {number}       decay     - Envelope shape exponent (typical range 0.1–5).
+ * @returns {AudioBuffer} Stereo impulse-response buffer.
+ */
+function createReverbImpulse(audioCtx, duration, decay) {
+    const fs     = audioCtx.sampleRate;
+    const len    = Math.max(1, Math.ceil(fs * Math.max(0.05, duration)));
+    const buffer = audioCtx.createBuffer(2, len, fs);
+
+    for (let ch = 0; ch < 2; ch++) {
+        const d = buffer.getChannelData(ch);
+        for (let i = 0; i < len; i++) {
+            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, Math.max(0.1, decay));
+        }
+    }
+    return buffer;
+}
+
+/**
+ * Generates a WaveShaperNode distortion curve using the standard soft-clip
+ * formula widely used in guitar-amp simulations:
+ *
+ *   y = ((π + k) · x) / (π + k · |x|)
+ *
+ * where k = amount (0 = no distortion, 400 = extreme clipping).
+ * The curve is symmetric around zero (odd function) for zero DC offset.
+ *
+ * @param {number} amount - Distortion amount (0–400).  Values > 200 produce
+ *                          near-hard-clipping.
+ * @returns {Float32Array} 512-point waveshaping curve mapped to [−1, +1].
+ */
+function createDistortionCurve(amount) {
+    const n     = 512;
+    const curve = new Float32Array(n);
+    const k     = Math.max(0, amount);
+    for (let i = 0; i < n; i++) {
+        const x    = (i * 2) / (n - 1) - 1;   // x ∈ [−1, +1]
+        curve[i]   = ((Math.PI + k) * x) / (Math.PI + k * Math.abs(x));
+    }
+    return curve;
+}
+
+// ─── 8. Utility ───────────────────────────────────────────────────────────────
 
 /**
  * Builds a one-sided linear frequency axis for the first N/2+1 FFT bins.
@@ -588,4 +646,6 @@ globalThis.DSPCore = Object.freeze({
     computeSNR,
     computeENOB,
     frequencyAxis,
+    createReverbImpulse,
+    createDistortionCurve,
 });
