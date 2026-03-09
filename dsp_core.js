@@ -233,7 +233,7 @@ function computeMagnitudeDb(re, im, windowGain) {
  *   CG = (1/N) · Σ_{n=0}^{N−1} w[n]
  *
  * Reference:
- *   Harris 1978, Table I.  For Hamming window, CG ≈ 0.5400.
+ *   Harris 1978 (Proc. IEEE), Table I.  For the Hamming window, CG = 0.54.
  *
  * @param {Float64Array} window - Window coefficient array.
  * @returns {number} Coherent gain in [0, 1].

@@ -74,6 +74,14 @@ let aWeightSections = null;
 let firMagnitude = null;     // Float64Array[N/2+1], user-drawn gain curve
 let isDrawing    = false;
 
+// Cached log-ratio for the FIR canvas frequency axis — computed once when
+// AudioContext is created (depends only on sample rate, which is immutable).
+// log(fMax / fMin) = log((fs/2) / 20); used in both _drawFIRCurve and
+// _paintFIRAtPos to avoid redundant Math.log() calls during mouse events.
+let firLogRatio  = Math.log(44100 / 2 / 20);  // placeholder; updated in initAudioContext
+let firFMax      = 44100 / 2;                  // placeholder; updated in initAudioContext
+const FIR_F_MIN  = 20;                         // lowest displayed frequency (Hz)
+
 // Canvas references
 let spectroCanvas  = null;
 let spectroCtx2d   = null;
@@ -140,12 +148,20 @@ function initAudioContext() {
     // ── Pre-compute A-weighting coefficients (Phase 3) ───────────────────
     aWeightSections = DSPCore.computeAWeightingCoefficients(fs);
 
+    // ── Cache FIR canvas log-ratio (depends only on sample rate) ─────────
+    // log(fMax / fMin) where fMax = fs/2, fMin = 20 Hz.
+    // Stored here to avoid recomputing on every mouse-move and every tick.
+    firFMax     = fs / 2;
+    firLogRatio = Math.log(firFMax / FIR_F_MIN);
+
     // ── AnalyserNode ─────────────────────────────────────────────────────
     // fftSize sets the time-domain buffer length (we run our own FFT; the
     // built-in FFT of AnalyserNode is unused).
     analyserNode = audioCtx.createAnalyser();
     analyserNode.fftSize              = FFT_SIZE;
-    analyserNode.smoothingTimeConstant = 0;       // no smoothing; we own it
+    // Disable built-in smoothing: raw samples are needed for accurate FFT
+    // magnitude computation; smoothing is applied at the display layer.
+    analyserNode.smoothingTimeConstant = 0;
 
     // ── ConvolverNode (Phase 2 FIR filter) ───────────────────────────────
     // normalize = false: we supply pre-normalised impulse responses.
@@ -484,14 +500,14 @@ function initFIRDesigner(canvas) {
  */
 function _paintFIRAtPos(x, y, W, H) {
     const fs   = audioCtx ? audioCtx.sampleRate : 44100;
-    const fMin = 20, fMax = fs / 2;
     const bins = firMagnitude.length;
 
     // Match the vertical inset from _drawFIRCurve
     const PAD_TOP = 14, PAD_BOT = 18;
     const drawH   = H - PAD_TOP - PAD_BOT;
 
-    const freq     = fMin * Math.pow(fMax / fMin, Math.max(0, Math.min(1, x / W)));
+    // Use cached firFMax / firLogRatio to avoid repeated division + log
+    const freq     = FIR_F_MIN * Math.exp(Math.max(0, Math.min(1, x / W)) * firLogRatio);
     const binIndex = Math.round(freq * FFT_SIZE / fs);
     const gain     = Math.max(0.0, Math.min(1.0, 1.0 - (y - PAD_TOP) / drawH));
 
@@ -517,9 +533,13 @@ function _paintFIRAtPos(x, y, W, H) {
 function _drawFIRCurve() {
     const W   = firCanvas.width;
     const H   = firCanvas.height;
-    const fs  = audioCtx ? audioCtx.sampleRate : 44100;
     const ctx = firCtx2d;
-    const fMin = 20, fMax = fs / 2;
+
+    // Use cached firFMax / firLogRatio — computed once in initAudioContext
+    // to avoid calling Math.log() on every tick and every bin in the curve.
+    const fMin     = FIR_F_MIN;
+    const fMax     = firFMax;
+    const logRatio = firLogRatio;    // = Math.log(fMax / fMin)
 
     // Vertical inset so gain=1 line is visibly inside the canvas
     const PAD_TOP = 14, PAD_BOT = 18;
@@ -543,7 +563,7 @@ function _drawFIRCurve() {
     const freqTicks = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
     for (const f of freqTicks) {
         if (f > fMax) continue;
-        const x = Math.log(f / fMin) / Math.log(fMax / fMin) * W;
+        const x = Math.log(f / fMin) / logRatio * W;
         ctx.beginPath(); ctx.moveTo(x, PAD_TOP); ctx.lineTo(x, H - PAD_BOT); ctx.stroke();
         ctx.fillText(f >= 1000 ? `${f / 1000}k` : `${f}`, x + 2, H - 4);
     }
@@ -567,12 +587,13 @@ function _drawFIRCurve() {
     ctx.strokeStyle = '#00d4ff';
     ctx.lineWidth   = 2;
 
+    const fs   = audioCtx ? audioCtx.sampleRate : 44100;
     const bins = firMagnitude.length;
     let started = false;
     for (let k = 1; k < bins; k++) {
         const freq = k * fs / FFT_SIZE;
         if (freq < fMin || freq > fMax) continue;
-        const x = Math.log(freq / fMin) / Math.log(fMax / fMin) * W;
+        const x = Math.log(freq / fMin) / logRatio * W;
         const y = gainToY(firMagnitude[k]);
         if (!started) { ctx.moveTo(x, y); started = true; }
         else          { ctx.lineTo(x, y); }
