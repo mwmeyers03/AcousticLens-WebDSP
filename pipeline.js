@@ -362,12 +362,13 @@ class PipelineEditor {
             const from = this._findBlock(conn.fromId);
             const to   = this._findBlock(conn.toId);
             if (!from || !to) continue;
-            const p1 = this._outputPortPos(from);
-            const p2 = this._inputPortPos(to);
+            const p1  = this._outputPortPos(from);
+            const p2  = this._inputPortPos(to);
             const cpx = (p1.x + p2.x) / 2;
+            const cpy = (p1.y + p2.y) / 2;
             for (let t = 0; t <= 1; t += 0.04) {
                 const bx = (1-t)*(1-t)*p1.x + 2*(1-t)*t*cpx + t*t*p2.x;
-                const by = (1-t)*(1-t)*p1.y + 2*(1-t)*t*((p1.y + p2.y)/2 + (p2.x - p1.x)*0) + t*t*p2.y;
+                const by = (1-t)*(1-t)*p1.y + 2*(1-t)*t*cpy  + t*t*p2.y;
                 if (Math.hypot(mx - bx, my - by) < 7) return conn;
             }
         }

@@ -49,7 +49,7 @@ class Visualizer {
         this._beatHistory = new Float32Array(60).fill(0);
         this._beatIdx     = 0;
         this._beatPulse   = 0;   // 0..1, decays over time
-        this._beatHue     = 0;   // degrees, cycles during party mode
+        this._beatHue     = 0;   // degrees (0–360), cycles during party mode
 
         // Particle system (mode = 'particles')
         this._particles = [];

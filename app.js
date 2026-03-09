@@ -453,7 +453,7 @@ function downloadRecording() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `acousticlens-recording-${Date.now()}.${mime.includes('webm') ? 'webm' : 'ogg'}`;
+    a.download = `acousticlens-recording-${Date.now()}-${Math.floor(Math.random() * 1e6)}.${mime.includes('webm') ? 'webm' : 'ogg'}`;
     a.click();
     URL.revokeObjectURL(url);
 }

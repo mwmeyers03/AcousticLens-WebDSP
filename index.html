@@ -150,6 +150,8 @@
       align-items: center;
     }
     #pipeline-toolbar .sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+    /* Vertical separator used in the source panel controls row */
+    .ctrl-sep { display: inline-block; width: 1px; height: 20px; background: var(--border); }
     #pipeline-canvas {
       display: block;
       width: 100%;
@@ -360,7 +362,7 @@
   <div class="controls">
     <button id="btn-start-mic">🎤&nbsp; Start Mic</button>
     <button id="btn-stop-mic" disabled>■&nbsp; Stop Mic</button>
-    <span class="sep" style="display:inline-block;width:1px;height:20px;background:var(--border);"></span>
+    <span class="ctrl-sep"></span>
     <button id="btn-load-file">📁&nbsp; Load File…</button>
     <input type="file" id="file-input" accept="audio/*" hidden>
     <button id="btn-play-file" disabled>▶&nbsp; Play</button>
@@ -368,7 +370,7 @@
     <label class="toggle-label" title="Loop file playback">
       <input type="checkbox" id="chk-loop"> <span class="toggle-track"></span> Loop
     </label>
-    <span class="sep" style="display:inline-block;width:1px;height:20px;background:var(--border);"></span>
+    <span class="ctrl-sep"></span>
     <button id="btn-record-out">⏺&nbsp; Record Output</button>
     <button id="btn-stop-record" disabled>■&nbsp; Stop Rec</button>
     <button id="btn-download-rec" disabled>⬇&nbsp; Download</button>
