@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AcousticLens — Real-Time DSP Studio</title>
+  <style>
+    /* ── Reset & base ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg0:    #0a0e14;
+      --bg1:    #0d1117;
+      --bg2:    #161b22;
+      --border: #21262d;
+      --text:   #c9d1d9;
+      --muted:  #8b949e;
+      --accent: #58a6ff;
+      --cyan:   #00d4ff;
+      --green:  #4caf50;
+      --red:    #f44336;
+      --orange: #ffa500;
+    }
+
+    body {
+      background: var(--bg0);
+      color: var(--text);
+      font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
+      min-height: 100vh;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────────── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+    header h1 {
+      font-size: 1.35rem;
+      color: var(--accent);
+      letter-spacing: 0.03em;
+    }
+    header p {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* ── Card panels ────────────────────────────────────────────────────── */
+    .panel {
+      background: var(--bg1);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+    .panel-title {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+    }
+    .panel-title span {
+      color: var(--muted);
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 0.68rem;
+    }
+
+    /* ── Controls row ───────────────────────────────────────────────────── */
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 5px 14px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg2);
+      color: var(--text);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.78rem;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    button:hover:not(:disabled) {
+      background: #1f2937;
+      border-color: var(--accent);
+    }
+    button:disabled { opacity: 0.38; cursor: not-allowed; }
+
+    #status-text {
+      font-size: 0.78rem;
+      color: var(--muted);
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg0);
+      min-width: 110px;
+    }
+
+    /* ── Canvases ───────────────────────────────────────────────────────── */
+    canvas {
+      display: block;
+      width: 100%;
+      border-radius: 3px;
+    }
+    #spectrogram-canvas {
+      height: 280px;
+      background: #000;
+      image-rendering: pixelated;
+    }
+    #fir-canvas {
+      height: 200px;
+      background: var(--bg1);
+      cursor: crosshair;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+    }
+
+    /* ── Colour legend ──────────────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 7px;
+      align-items: center;
+    }
+    .legend-swatch {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+
+    /* ── Metrics grid ───────────────────────────────────────────────────── */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+      gap: 10px;
+    }
+    .metric-card {
+      background: var(--bg0);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 12px;
+    }
+    .metric-label {
+      font-size: 0.66rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+    .metric-value {
+      font-size: 1.2rem;
+      color: var(--cyan);
+      margin-top: 3px;
+    }
+
+    /* ── FIR hint ───────────────────────────────────────────────────────── */
+    .fir-hint {
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    footer {
+      margin-top: 18px;
+      font-size: 0.62rem;
+      color: #30363d;
+      text-align: center;
+      line-height: 1.8;
+    }
+    footer a { color: #30363d; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header>
+  <h1>AcousticLens — Real-Time DSP Studio</h1>
+  <p>
+    STFT Spectrogram &nbsp;·&nbsp; Interactive FIR Filter Designer &nbsp;·&nbsp;
+    A-Weighting (IEC&nbsp;61672-1:2013) &nbsp;·&nbsp; SNR / ENOB (IEEE&nbsp;1241-2010)
+    &nbsp;|&nbsp; Zero external DSP libraries &nbsp;|&nbsp; Vanilla JS + Web Audio API
+  </p>
+</header>
+
+<!-- ── Controls ────────────────────────────────────────────────────────────── -->
+<div class="panel">
+  <div class="panel-title">Transport</div>
+  <div class="controls">
+    <button id="btn-start">▶&nbsp; Start Capture</button>
+    <button id="btn-stop" disabled>■&nbsp; Stop</button>
+    <span id="status-text">○&nbsp; Idle</span>
+  </div>
+</div>
+
+<!-- ── Phase 1: Spectrogram ─────────────────────────────────────────────────── -->
+<div class="panel">
+  <div class="panel-title">
+    Phase&nbsp;1 — STFT Real-Time Spectrogram
+    <span>(Hamming window &nbsp;·&nbsp; Cooley–Tukey DIT FFT &nbsp;·&nbsp; N = 2048)</span>
+  </div>
+
+  <canvas id="spectrogram-canvas" width="1024" height="280"
+          aria-label="Real-time spectrogram display"></canvas>
+
+  <div class="legend">
+    <span>
+      <span class="legend-swatch" style="background:#000;border:1px solid #333;"></span>
+      −120 dBFS
+    </span>
+    <span>
+      <span class="legend-swatch" style="background:#3c0064;"></span>
+      −90 dBFS
+    </span>
+    <span>
+      <span class="legend-swatch" style="background:#be1e2d;"></span>
+      −60 dBFS
+    </span>
+    <span>
+      <span class="legend-swatch" style="background:#ffa500;"></span>
+      −30 dBFS
+    </span>
+    <span>
+      <span class="legend-swatch" style="background:#ffffd2;border:1px solid #555;"></span>
+      0 dBFS
+    </span>
+  </div>
+</div>
+
+<!-- ── Phase 2: FIR Filter Designer ────────────────────────────────────────── -->
+<div class="panel">
+  <div class="panel-title">
+    Phase&nbsp;2 — Interactive FIR Filter Designer
+    <span>(Draw magnitude response &nbsp;→&nbsp; IFFT &nbsp;→&nbsp; ConvolverNode)</span>
+  </div>
+
+  <canvas id="fir-canvas" width="1024" height="200"
+          aria-label="FIR filter designer — draw the desired frequency response"></canvas>
+
+  <div class="controls" style="margin-top:8px;">
+    <button id="btn-apply-fir">⚙&nbsp; Apply FIR</button>
+    <button id="btn-reset-fir">↺&nbsp; Reset All-Pass</button>
+  </div>
+  <p class="fir-hint">
+    Draw the desired magnitude response on the canvas above.
+    The filter is applied automatically on mouse release via IFFT (frequency-sampling method,
+    IEEE&nbsp;Std&nbsp;1188-1996) and loaded into the Web Audio
+    <code>ConvolverNode</code>.
+  </p>
+</div>
+
+<!-- ── Phase 3: Analysis Metrics ────────────────────────────────────────────── -->
+<div class="panel">
+  <div class="panel-title">
+    Phase&nbsp;3 — Standards-Compliant Analysis
+    <span>
+      A-weighting: IEC&nbsp;61672-1:2013 &nbsp;·&nbsp;
+      SNR / ENOB: IEEE&nbsp;Std&nbsp;1241-2010 &nbsp;·&nbsp;
+      Equal-loudness basis: ISO&nbsp;226:2023
+    </span>
+  </div>
+
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-label">Peak Frequency</div>
+      <div class="metric-value" id="peak-freq-value">— Hz</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">SNR (IEEE&nbsp;1241)</div>
+      <div class="metric-value" id="snr-value">— dB</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">ENOB (IEEE&nbsp;1241)</div>
+      <div class="metric-value" id="enob-value">— bits</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Sample Rate (f<sub>s</sub>)</div>
+      <div class="metric-value" id="sample-rate-value">— Hz</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Footer ───────────────────────────────────────────────────────────────── -->
+<footer>
+  AcousticLens &nbsp;·&nbsp; No external DSP libraries &nbsp;·&nbsp; Vanilla JS &nbsp;·&nbsp; Web Audio API<br>
+  References: IEEE Std 1241-2010 &nbsp;·&nbsp; IEC 61672-1:2013 &nbsp;·&nbsp; ISO 226:2023 &nbsp;·&nbsp;
+  Harris 1978 (Proc. IEEE) &nbsp;·&nbsp; Cooley &amp; Tukey 1965 &nbsp;·&nbsp; Shannon 1949
+</footer>
+
+<!-- Load DSP core first, then app logic -->
+<script src="dsp_core.js"></script>
+<script src="app.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', onPageLoad);
+</script>
+
+</body>
+</html>
